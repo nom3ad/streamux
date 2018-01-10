@@ -1,19 +1,17 @@
-from gevent.socket import create_connection
+from gevent import socket
 from streamux import Session
 
 
-def listener(socket, address):
-    print('New connection from %s:%s' % address)
-    rfileobj = socket.makefile(mode='rb')
-    
-
-
 def main():
-    conn = create_connection('localhost:2786')
-    session = Session(conn)
+    # sock = socket.create_connection(('localhost', 2786))
+    sock = socket.socket(
+        socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(('localhost', 2786))
+    session = Session(sock.makefile('rw'), True)
     stream = session.open_stream()
+    print "opened", stream
     stream.write('ping')
-    print stream.read()
+    print repr(stream.read())
 
 if __name__ == '__main__':
     main()
