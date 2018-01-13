@@ -97,7 +97,7 @@ class Session:
         if self.is_closed():
             return 0
         else:
-            len(self._streams)
+            return len(self._streams)
 
 
     def is_closed(self):
