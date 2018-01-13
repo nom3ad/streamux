@@ -1,76 +1,35 @@
+import multiprocessing
+
+import time
 import gevent
-from gevent import socket
-from streamux import Session
-
-from tinyrpc.protocols.jsonrpc import JSONRPCProtocol
 
 
-class RemoteException(Exception):
-    pass
+NUM_CALLS = 10000
+POOL=1
+import test_server
+import test_client
 
-rpc = JSONRPCProtocol()
-class Proxy:
-    def __init__(self, session):
-        self.session = session
-    def __getattr__(self, name):
-        def f(*args, **kwargs):
-            request = rpc.create_request(name, args, kwargs)
-            stream = self.session.open_stream()
-            #$print "opened", stream
-            stream.write(request.serialize())
-            response = rpc.parse_reply(stream.read())
-            stream.close()
-            if hasattr(response, 'error'):
-                print response.error
-                raise RemoteException(response.error)
-            return (response.result)
-        return f
-    def __del__(self):
-        self.session.close()
-
-# sock = socket.create_connection(('localhost', 2786))
-def create_conn():
-    sock = socket.socket(
-        socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(('localhost', 2786))
-    session = Session(sock.makefile('rw'), True)
-    p = Proxy(session)
-    return p
-
-
-
-
-#=============================================
-# import multiprocessing
-
-NUM_CALLS = 1000
-
-
-# def run_sum_server():
-#     import zerorpc
-
-#     class SumServer(object):
-#         def sum(self, x, y):
-#             return x + y
-
-#     server = zerorpc.Server(SumServer())
-#     server.bind("tcp://127.0.0.1:6000")
-#     server.run()
+def parallel(p):
+    pool = gevent.pool.Pool(POOL)
+    print "add"
+    [pool.spawn(p.echo, "aloha") for _ in range(NUM_CALLS)]
+    print "join"
+    pool.join()
 
 def call():
-    import time
-    p = create_conn()
+    p = test_client.rpc_client('localhost', 2786)
     start = time.time()
     [p.sum(1,2) for _ in range(NUM_CALLS)]
+    # parallel(p)
     print('call: %d qps' % (NUM_CALLS / (time.time() - start)))
 
 
 if __name__ == '__main__':
-    # p = multiprocessing.Process(target=run_sum_server)
-    # p.start()
+    p = multiprocessing.Process(target=test_server.main)
+    p.start()
 
-    # time.sleep(1)
+    time.sleep(1)
 
     call()
 
-    # p.terminate()
+    p.terminate()

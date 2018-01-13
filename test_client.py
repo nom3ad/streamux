@@ -8,14 +8,18 @@ from tinyrpc.protocols.jsonrpc import JSONRPCProtocol
 class RemoteException(Exception):
     pass
 
+
 rpc = JSONRPCProtocol()
+
+
 class Proxy:
     def __init__(self, session):
         self.session = session
+
     def __getattr__(self, name):
         def f(*args, **kwargs):
             request = rpc.create_request(name, args, kwargs)
-            stream = session.open_stream()
+            stream = self.session.open_stream()
             #$print "opened", stream
             stream.write(request.serialize())
             response = rpc.parse_reply(stream.read())
@@ -25,18 +29,28 @@ class Proxy:
             return (response.result)
         return f
 
+
+def rpc_client(host, port):
 # sock = socket.create_connection(('localhost', 2786))
-sock = socket.socket(
-    socket.AF_INET, socket.SOCK_STREAM)
-sock.connect(('localhost', 2786))
-session = Session(sock.makefile('rw'), True)
-p = Proxy(session)
+    sock = socket.socket(
+        socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((host, port))
+    session = Session(sock.makefile('rw'), True)
+    p = Proxy(session)
+    return p
 
-print p.foo('arun')
-print p.bar(5)
-print p.foo('arun')
-#$print p.foo('arun')
-#$print p.foo('arun')
-#$print p.foo('arun')
 
-session.close()
+def main():
+    p = rpc_client('localhost', 2786)
+    print(p.foo('arun'))
+    print (p.bar(5))
+    print (p.foo('arun'))
+    #$print p.foo('arun')
+    #$print p.foo('arun')
+    #$print p.foo('arun')
+
+    session.close()
+    pass
+
+if __name__ == '__main__':
+    main()

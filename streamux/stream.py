@@ -1,8 +1,8 @@
 from gevent.event import Event
 from gevent.queue import Queue
 from gevent import sleep
-from frame import *
-from  exceptions import *
+from .frame import *
+from  .exceptions import *
 from io import BytesIO
 
 
@@ -28,6 +28,7 @@ class Stream(object):
             return BrokenPipeError()
         if self.read_q.empty and self.rstflag:
             raise EOFError()
+            print self
         data = self.read_q.get()
         return data
 
@@ -36,7 +37,7 @@ class Stream(object):
 
     def close(self):
         if self._died:
-            BrokenPipeError()
+            raise BrokenPipeError()
         self.session.on_stream_closed(self.id)
         # sending cmd_fin via unorthodox way after closing stream.
         self.session.write_frame(self.id, CMD_FIN)
@@ -65,7 +66,7 @@ class Stream(object):
             ev.wait()
 
     def mark_rst(self):
-        #$print "resetted %r" % self
+        # print "resetted %r" % self
         self.rstflag = True
 
     def recycle_tokens(self):
