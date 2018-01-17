@@ -52,9 +52,10 @@ def listener(socket, address):
                       keep_alive_timeout=100)
     while not session.is_closed():
         stream = session.accept_stream()
-        #$print "accepted", stream
+        #print "accepted", stream
         gevent.spawn(stream_handle, stream)
-    session.close()
+    print "server: active strems", session.stream_count
+    # session.close()
 
 
 dispatch = RPCDispatcher()

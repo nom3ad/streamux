@@ -23,15 +23,20 @@ class Proxy:
             #$print "opened", stream
             stream.write(request.serialize())
             response = rpc.parse_reply(stream.read())
+            # stream.read()
             stream.close()
+            pass
             if hasattr(response, 'error'):
                 raise RemoteException(response.error)
             return (response.result)
         return f
 
+    def __del__(self):
+        self.session.close()
+
 
 def rpc_client(host, port):
-# sock = socket.create_connection(('localhost', 2786))
+    # sock = socket.create_connection(('localhost', 2786))
     sock = socket.socket(
         socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((host, port))
@@ -49,8 +54,6 @@ def main():
     #$print p.foo('arun')
     #$print p.foo('arun')
 
-    session.close()
-    pass
 
 if __name__ == '__main__':
     main()
