@@ -85,11 +85,13 @@ class Session:
     def close(self):
         if self._died:
             return BrokenPipeError()
+           
         for s in self._streams.values():
             s.session_close()
         self._died =True
         self.bucket_notify_event.set()
-        return self.transport.close()
+        self.transport.close()
+        self.accept_q.put(None)
 
 
     @property
@@ -101,7 +103,7 @@ class Session:
 
 
     def is_closed(self):
-        if self._died:
+        if self._died or self.transport.closed:
             return True
         return False
 
@@ -152,9 +154,9 @@ class Session:
     # recvLoop keeps on reading from underlying transport if tokens are available
     def recvLoop(self):
         while not self._died:
-            while self.bucket <= 0:
-                self.bucket_notify_event.wait()
-                self.bucket_notify_event.clear()
+            # while self.bucket <= 0:
+            #     self.bucket_notify_event.wait()
+            #     self.bucket_notify_event.clear()
             try:
                 sid, cmd, data = self.read_frame()
                 self.dataReady = True
@@ -167,13 +169,11 @@ class Session:
                 elif cmd == CMD_FIN:
                     if sid in self._streams:
                         stream = self._streams[sid]
-                        stream.mark_rst()
-                        stream.read_event.set()
+                        stream.mark_rst_and_close()
                 elif cmd == CMD_PSH:
                     if sid in self._streams:
                         stream = self._streams[sid]
                         stream.pushBytes(data)
-                        stream.read_event.set()
                 elif cmd == CMD_NOP:
                     pass
                 else:
@@ -199,7 +199,7 @@ class Session:
 
     def sendLoop(self):
         while not self._died:
-            (sid, cmd, data),ev = self.write_q.get()
+            sid, cmd, data,ev = self.write_q.get()
             try:
                 # data: shud be a memoryview
                 if data:
@@ -223,7 +223,7 @@ class Session:
         # and returns the number of bytes written if successful
         ev = Event()
         self.write_q.put(
-            ((sid, cmd, '') ,ev)
+            (sid, cmd, '',ev)
             )
         ev.wait()
 

@@ -9,12 +9,11 @@ from io import BytesIO
 class Stream(object):
     def __init__(self, id, framesize, session):
         self._id = id
-        self._died = False
+        self._session_died = False
         self.session = session
         self.framesize = framesize
         self.read_q = Queue()
-        self.read_event = Event()
-        self.rstflag = False
+        self._rst_flag = False
 
     def __repr__(self):
         return "<Stream [%d] of %r>" % (self.id, self.session)
@@ -24,30 +23,45 @@ class Stream(object):
         return self._id
 
     def read(self):
-        if self._died:
-            return BrokenPipeError()
-        if self.read_q.empty and self.rstflag:
-            raise EOFError()
-            print self
+        if self.read_q.empty():
+            if self._session_died:
+                return BrokenPipeError()
+            if self._rst_flag:
+                raise StreamClosedError()
+
         data = self.read_q.get()
+        if data is None:  # stream is closed
+            if self._session_died:
+                return BrokenPipeError()
+            if self._rst_flag:
+                raise StreamClosedError()
         return data
 
     def pushBytes(self, data):
         self.read_q.put(data)
 
     def close(self):
-        if self._died:
+        # return
+        if self._session_died:
             raise BrokenPipeError()
+        if self._rst_flag:
+            return True
         self.session.on_stream_closed(self.id)
-        # sending cmd_fin via unorthodox way after closing stream.
+        # # sending cmd_fin via unorthodox way after closing stream.
         self.session.write_frame(self.id, CMD_FIN)
+        self.read_q.put(None)
+        # # print "closed", self
 
     def session_close(self):
-        self._died = True
+        # print "Session close info to stream"
+        self._session_died = True
+        self.read_q.put(None)
 
     def write(self, data):
-        if self._died:
+        if self._session_died:
             raise BrokenPipeError()
+        if self._rst_flag:
+            raise StreamClosedError()
 
         data = memoryview(data)
         slices = []
@@ -61,13 +75,14 @@ class Stream(object):
         for slice in slices:
             ev = Event()
             self.session.write_q.put(
-                ((self.id, CMD_PSH, slice), ev)
+                (self.id, CMD_PSH, slice, ev)
             )
             ev.wait()
 
-    def mark_rst(self):
+    def mark_rst_and_close(self):
         # print "resetted %r" % self
-        self.rstflag = True
+        self._rst_flag = True
+        self.close()
 
     def recycle_tokens(self):
         pass
