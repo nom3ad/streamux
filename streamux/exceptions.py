@@ -10,3 +10,6 @@ class StreamIdOverFlowError(Exception):
 
 class ReadFrameError(Exception):
     pass
+
+class StreamClosedError(Exception):
+    pass
