@@ -32,7 +32,7 @@ class Stream(object):
         data = self.read_q.get()
         if data is None:  # stream is closed
             if self._session_died:
-                return BrokenPipeError()
+                raise BrokenPipeError()
             if self._rst_flag:
                 raise StreamClosedError()
         return data
@@ -41,16 +41,25 @@ class Stream(object):
         self.read_q.put(data)
 
     def close(self):
-        # return
         if self._session_died:
             raise BrokenPipeError()
         if self._rst_flag:
             return True
+        # remove stream info from session, and reclaim tockens
         self.session.on_stream_closed(self.id)
         # # sending cmd_fin via unorthodox way after closing stream.
-        self.session.write_frame(self.id, CMD_FIN)
+        self._rst_flag = True
         self.read_q.put(None)
+        # send FIN
+        self.session.write_frame(self.id, CMD_FIN)
         # # print "closed", self
+
+    def mark_rst_and_close(self):
+        # FIN is recieved.
+        # print "resetted %r" % self
+        self._rst_flag = True
+        self.read_q.put(None)
+        self.session.on_stream_closed(self.id)
 
     def session_close(self):
         # print "Session close info to stream"
@@ -79,10 +88,7 @@ class Stream(object):
             )
             ev.wait()
 
-    def mark_rst_and_close(self):
-        # print "resetted %r" % self
-        self._rst_flag = True
-        self.close()
+
 
     def recycle_tokens(self):
         pass

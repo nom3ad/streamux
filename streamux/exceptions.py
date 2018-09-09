@@ -1,4 +1,7 @@
 class BrokenPipeError(Exception):
+    """
+    raises when session is closed.
+    """
     pass
 
 

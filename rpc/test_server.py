@@ -9,6 +9,7 @@ from tinyrpc.dispatch import RPCDispatcher
 
 rpc = JSONRPCProtocol()
 
+
 def handle_incoming_message(data):
     try:
         request = rpc.parse_request(data)
@@ -40,19 +41,21 @@ def handle_request(request):
         # for example, a method wasn't found
         return request.error_respond(e)
 
+
 def stream_handle(stream):
-     data = stream.read()
-     stream.write(handle_incoming_message(data))
-     stream.close()
+    data = stream.read()
+    stream.write(handle_incoming_message(data))
+    stream.close()
+
 
 def listener(socket, address):
     #$print('New connection from %s:%s' % address)
     rfileobj = socket.makefile(mode='rb')
     session = Session(rfileobj, False, keep_alive_interval=100,
                       keep_alive_timeout=100)
-    while not session.is_closed():
+    while not session.closed():
         stream = session.accept_stream()
-        #print "accepted", stream
+        # print "accepted", stream
         gevent.spawn(stream_handle, stream)
     print "server: active strems", session.stream_count
     # session.close()
@@ -60,13 +63,16 @@ def listener(socket, address):
 
 dispatch = RPCDispatcher()
 
+
 @dispatch.public
 def foo(name):
     return "hello %s" % name
 
+
 @dispatch.public
 def echo(name):
     return name
+
 
 @dispatch.public
 def bar(sec):
@@ -75,8 +81,9 @@ def bar(sec):
 
 
 @dispatch.public
-def sum(a,b):
-    return a+b
+def sum(a, b):
+    return a + b
+
 
 def main():
     server = StreamServer(('0.0.0.0', 2786), listener)

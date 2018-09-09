@@ -37,3 +37,9 @@ def upack_header(header):
     version,cmd,length,stream_id
     """
     return header_fmt.unpack(header)
+
+upack_header = header_fmt.unpack
+
+# import timeit
+
+# # print timeit.repeat("upack_header('ABCDEFGH')", setup="from __main__ import upack_header")
