@@ -1,9 +1,8 @@
 import multiprocessing
-
+import sys,os
 import time
 import gevent
-
-
+sys.path.append(".")
 NUM_CALLS = 50 # 0000
 POOL = 100
 import test_server
