@@ -212,6 +212,8 @@ class Session:
                 #$print "stream[%d] writes %s (%r) " % (sid, ['SYN','FIN','PSH','NOP'][cmd-1], data and data.tobytes())
                 ev.oops = None
             except Exception as oops:
+                print(ev, ev.__class__)
+                print (ev.oops)
                 ev.oops = oops
             finally:
                 ev.set()
