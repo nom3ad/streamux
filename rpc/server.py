@@ -1,9 +1,11 @@
 from gevent.server import StreamServer
 import gevent
+from gevent import socket
 from streamux import Session
 from msgpack import packb, unpackb
 
 class Server(object):
+    _k_map = {}
     def __init__(self, address):
         host, port = address.split(":")
 
@@ -20,24 +22,29 @@ class Server(object):
 
         self._stream_server = StreamServer((host, int(port)), listener)
 
-        self.serve = self.stream_server._serve_forever
+        self.serve = self._stream_server.serve_forever
 
-        self._map = {}
+        self._map = self._k_map
 
-    def register(self, fn):
-        self._map[fn.__name__] = fn
+    @classmethod
+    def register(cls, fn):
+        cls._k_map[fn.__name__] = fn
         return fn
 
     def __del__(self):
-        self.session.close()
-
-
+        # self.session.close()
+        pass
 
     def stream_handle(self, stream):
         data = stream.read()
-        stream.write(handle_incoming_message(data))
+        name, args, kwargs = unpackb(data, raw=False)
+        result, error = None, None
+        try:
+            result = self._map[name](*args, **kwargs)
+        except Exception as oops:
+            error = repr(oops)
+        stream.write(packb((result, error)))
         stream.close()
-
 
     @staticmethod
     def create_session(addr):
@@ -46,19 +53,3 @@ class Server(object):
         sock.connect(addr)
         session = Session(sock.makefile('rw'), True)
         return session
-
-
-
-
-
-def foo(name):
-    return "hello %s" % name
-
-@dispatch.public
-def echo(name):
-    return name
-
-@dispatch.public
-def bar(sec):
-    gevent.sleep(sec)
-    return sec

@@ -210,11 +210,11 @@ class Session:
                 self.transport.write(frame)
                 self.transport.flush()
                 #$print "stream[%d] writes %s (%r) " % (sid, ['SYN','FIN','PSH','NOP'][cmd-1], data and data.tobytes())
-                ev.oops = None
+                # ev.oops = None
             except Exception as oops:
-                print(ev, ev.__class__)
-                print (ev.oops)
-                ev.oops = oops
+                # print(ev, ev.__class__)
+                print (oops)
+                # ev.oops = oops
             finally:
                 ev.set()
         #$print "exits sendloop of %r" % self
